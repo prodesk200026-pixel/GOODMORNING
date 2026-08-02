@@ -18,8 +18,7 @@
 
 <script>
     // Niche wale URL ko apne Render Deployed URL se replace karein (Step 4 mein milega)
-    const SERVER_URL = "https://your-app-name.onrender.com"; 
-
+    const SERVER_URL = https://goodmorning-h59w.onrender.com
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const status = document.getElementById('status');
